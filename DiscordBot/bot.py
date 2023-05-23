@@ -92,11 +92,21 @@ class ModBot(discord.Client):
         # Let the report class handle this message; forward all the messages it returns to uss
         responses = await self.reports[author_id].handle_message(message)
         for r in responses:
-            await message.channel.send(r)
+            # TODO: add a more sophisticated method for evaluating this
+            #       and updating the report
+            if len(r) == 2:
+                msg, view = r
+                await message.channel.send(msg, view=view)
+            else:
+                await message.channel.send(r)
 
         # If the report is complete or cancelled, remove it from our map
         if self.reports[author_id].report_complete():
-            self.reports.pop(author_id)
+            report = self.reports.pop(author_id)
+
+            # Also send the message to the mod channel with all details
+            mod_channel = self.mod_channels[report.message.guild.id]
+            await mod_channel.send(f"Generated report: {report.get_report()}")
 
     async def handle_channel_message(self, message):
         # Only handle messages sent in the "group-#" channel
