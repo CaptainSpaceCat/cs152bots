@@ -1,7 +1,12 @@
+from datetime import datetime
 from enum import Enum, auto
-import discord
-import re
+from functools import total_ordering
+from uuid import uuid4
 import json
+import re
+
+import discord
+
 
 # TODO: organize these constants so they have natural substructure
 
@@ -36,13 +41,24 @@ BLOCK_PROMPT = "Do you want to block the user?"
 SUBMIT_LINK_MSG = "Please submit the URL or relevant context."
 THANK_YOU_MSG = "Thank you for your report. Our content moderation team will take a look at the report and take appropriate action."
 
+# Report Fields
+REPORT_ID = "Report ID"
+REPORT_DATE = "Date"
+REPORTING_USER = "Reporting User"
+REPORTED_USER = "Reported User"
+REPORTED_POST = "Reported Post"
+REPORTED_POST_URL = "Reported Post URL"
+REPORT_SEVERITY = "Report Severity"
+
 
 class State(Enum):
     REPORT_START = auto()
     AWAITING_MESSAGE = auto()
     MESSAGE_IDENTIFIED = auto()
+    REPORT_CANCELED = auto()
     REPORT_COMPLETE = auto()
-
+    
+@total_ordering
 class Report:
     START_KEYWORD = "report"
     CANCEL_KEYWORD = "cancel"
@@ -55,6 +71,11 @@ class Report:
         self.report_info = {}
         self.message = None
         self.reporting_stage = None
+        self.complete = False
+        self.report_severity = 0
+
+        # Every report needs a unique ID
+        self.add_to_report(REPORT_ID, uuid4())
     
     async def handle_message(self, message):
         '''
@@ -64,10 +85,12 @@ class Report:
         '''
 
         if message.content == self.CANCEL_KEYWORD:
-            self.state = State.REPORT_COMPLETE
+            self.state = State.REPORT_CANCELED
             return ["Report cancelled."]
 
         if message.content == self.FINISH_KEYWORD and self.state == State.REPORT_COMPLETE:
+            self.add_to_report(REPORT_DATE, datetime.now())
+            self.add_to_report(REPORT_SEVERITY, self.report_severity)
             return ["Report finished."]
         
         if self.state == State.REPORT_START:
@@ -76,11 +99,12 @@ class Report:
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
-            self.add_to_report("User Opening Report", message.author.name)
+            self.add_to_report(REPORTING_USER, message.author.name)
             return [reply]
         
         if self.state == State.AWAITING_MESSAGE:
-            self.add_to_report("URL Reported", message.content)
+            self.add_to_report(REPORTED_POST_URL, message.content)
+
             # Parse out the three ID strings from the message link
             m = re.search('/(\d+)/(\d+)/(\d+)', message.content)
             if not m:
@@ -98,12 +122,11 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            self.add_to_report("User Being Reported", message.author.name)
-            self.add_to_report("Post Reported", message.content)
-            self.message = message
-            #return [("", ReportTypeView())]
-            #return ["I found this message:", "```" + message.author.name + ": " + message.content + "```", \
-            #        "This is all I know how to do right now - it's up to you to build out the rest of my reporting flow!"]
+            self.add_to_report(REPORTED_USER, message.author.name)
+            self.add_to_report(REPORTED_POST, message.content)
+
+            self.message = message  # Save the found message so we can reference attributes later
+
             select_options = [
                 (MANIPULATED_CONTENT, "Completely false content"),
                 (FAKE_CONTENT, "Distortion of information"),
@@ -124,7 +147,7 @@ class Report:
         return []
 
 
-    def _handle_report_type(self, prompt, payload):
+    async def _handle_report_type(self, prompt, payload):
         self.add_to_report(prompt, payload)
 
         yes_no_select_options = [
@@ -136,33 +159,38 @@ class Report:
         #       you can probably do something with assigning a prompt # and mapping to text
         if prompt == ABUSE_PROMPT:
             if payload == MANIPULATED_CONTENT:
+                # TODO: This is just an arbitrary severity ranking, needs to be updated once we have something better
+                self.report_severity += 4
                 select_options = [
                     (MOD_ORIG_SOURCE, ""),
                     (MISSING_INFO, ""),
                     (EXAGGERATION, "")
                 ]
-                return [("", ReportView(select_options, MANIPULATED_PROMPT, self._handle_report_type))]
+                return [(MANIPULATED_PROMPT, ReportView(select_options, MANIPULATED_PROMPT, self._handle_report_type))]
 
             elif payload == FAKE_CONTENT:
-                return [("", ReportView(yes_no_select_options, COUNTER_EVIDENCE_PROMPT, self._handle_report_type))]
+                self.report_severity += 3
+                return [(COUNTER_EVIDENCE_PROMPT, ReportView(yes_no_select_options, COUNTER_EVIDENCE_PROMPT, self._handle_report_type))]
 
             elif payload == IMPOSTER_CONTENT:
+                self.report_severity += 2
                 select_options = [
                     (IMPOSTER, "This post is made by someone pretending to be someone they are not"),
                     (FAKE_PERSON, "This post is made by a user that doesn't actually exist (e.g. bot)")
                 ]
-                return [("", ReportView(select_options, IMPOSTER_PROMPT, self._handle_report_type))]
+                return [(IMPOSTER_PROMPT, ReportView(select_options, IMPOSTER_PROMPT, self._handle_report_type))]
                 
             elif payload == OUT_OF_CONTEXT:
-                return [("", ReportView(yes_no_select_options, OUT_OF_CONTEXT_PROMPT, self._handle_report_type))]
+                self.report_severity += 1
+                return [(OUT_OF_CONTEXT_PROMPT, ReportView(yes_no_select_options, OUT_OF_CONTEXT_PROMPT, self._handle_report_type))]
 
             return []
 
         if prompt == MANIPULATED_PROMPT:
-            return [("", ReportView(yes_no_select_options, COUNTER_EVIDENCE_PROMPT, self._handle_report_type))]
+            return [(COUNTER_EVIDENCE_PROMPT, ReportView(yes_no_select_options, COUNTER_EVIDENCE_PROMPT, self._handle_report_type))]
 
         if prompt == IMPOSTER_PROMPT:
-            return [("", ReportView(yes_no_select_options, REAL_ORG_PROMPT, self._handle_report_type))]
+            return [(REAL_ORG_PROMPT, ReportView(yes_no_select_options, REAL_ORG_PROMPT, self._handle_report_type))]
             
 
         # Handle the YES/NO prompts
@@ -172,13 +200,13 @@ class Report:
                 return [(SUBMIT_LINK_MSG)]
 
             elif payload == GENERIC_NO:
-                return [("", ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
+                return [(INTENT_TO_DECEIVE_PROMPT, ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
 
         if prompt == SUBMIT_LINK_MSG:
-            return [("", ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
+            return [(INTENT_TO_DECEIVE_PROMPT, ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
 
         if prompt == INTENT_TO_DECEIVE_PROMPT:
-            return [(THANK_YOU_MSG), ("", ReportView(yes_no_select_options, BLOCK_PROMPT, self._handle_report_type))]
+            return [(THANK_YOU_MSG), (BLOCK_PROMPT, ReportView(yes_no_select_options, BLOCK_PROMPT, self._handle_report_type))]
 
     
         # The final step of all reports is asking if the user should be blocked
@@ -191,14 +219,61 @@ class Report:
             
         return []
 
-    def get_report(self):
-        return json.dumps(self.report_info)
+    def add_to_report(self, key, val):
+        self.report_info[key] = val
+
+    def report_end(self):
+        return self.state in [State.REPORT_CANCELED, State.REPORT_COMPLETE]
+
+    def report_canceled(self):
+        return self.state == State.REPORT_CANCELED
 
     def report_complete(self):
         return self.state == State.REPORT_COMPLETE
 
-    def add_to_report(self, key, val):
-        self.report_info[key] = val
+    def get_report_id(self):
+        return self.report_info[REPORT_ID]
+
+    def get_formatted_report(self):
+        if self.state != State.REPORT_COMPLETE:
+            raise Exception("This can only be called after a report is complete.")
+        return "\n".join([f"**{key}**: {val}" for key, val in self.report_info.items()])
+
+    def get_report(self):
+        if self.state != State.REPORT_COMPLETE:
+            raise Exception("This can only be called after a report is complete.")
+        return self.report_info
+
+    def get_report_date(self):
+        if self.state != State.REPORT_COMPLETE:
+            raise Exception("This can only be called after a report is complete.")
+        return self.report_info[REPORT_DATE].strftime("%m/%d/%Y, %H:%M:%S")
+
+    def get_report_severity(self):
+        if self.state != State.REPORT_COMPLETE:
+            raise Exception("This can only be called after a report is complete.")
+        return self.report_info.get(REPORT_SEVERITY, 0)
+
+    def get_reporting_user(self):
+        if self.state != State.REPORT_COMPLETE:
+            raise Exception("This can only be called after a report is complete.")
+        return self.report_info.get(REPORTING_USER, None)
+
+    def get_reported_user(self):
+        if self.state != State.REPORT_COMPLETE:
+            raise Exception("This can only be called after a report is complete.")
+        return self.report_info.get(REPORTED_USER, None)
+
+    # Order reports based on severity and date
+    def __eq__(self, obj):
+        return (self.report_info[REPORT_SEVERITY] == obj.report_info[REPORT_SEVERITY]) and (self.report_info[REPORT_DATE] == obj.report_info[REPORT_DATE])
+
+    def __lt__(self, obj):
+        return (self.report_info[REPORT_SEVERITY] < obj.report_info[REPORT_SEVERITY]) and (self.report_info[REPORT_DATE] < obj.report_info[REPORT_DATE])
+
+    def __gt__(self, obj):
+        return (self.report_info[REPORT_SEVERITY] > obj.report_info[REPORT_SEVERITY]) and (self.report_info[REPORT_DATE] > obj.report_info[REPORT_DATE])
+        
 
 
 class ReportView(discord.ui.View):
@@ -212,12 +287,12 @@ class ReportDropdown(discord.ui.Select):
         self.prompt = prompt
         self.callback_fn = callback_fn
         options = [discord.SelectOption(label=option[0], description=option[1]) for option in select_options]
-        super().__init__(placeholder=prompt, options=options)
+        super().__init__(placeholder="Please select one", options=options)
 
     async def callback(self, interaction: discord.Interaction):
         # NOTE: if the interction is not responded to, Discord will
         #       display an error message
-        responses = self.callback_fn(self.prompt, self.values[0])
+        responses = await self.callback_fn(self.prompt, self.values[0])
         for r in responses:
             if len(r) == 2:
                 msg, view = r

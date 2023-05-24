@@ -1,13 +1,17 @@
 # bot.py
-import discord
-from discord.ext import commands
-import os
 import json
 import logging
+import os
+import pdb
 import re
 import requests
+
+import discord
+from discord.ext import commands
+
 from report import Report
-import pdb
+from mod import ModReview
+
 
 # Set up logging to the console
 logger = logging.getLogger('discord')
@@ -34,6 +38,8 @@ class ModBot(discord.Client):
         self.group_num = None
         self.mod_channels = {} # Map from guild to the mod channel id for that guild
         self.reports = {} # Map from user IDs to the state of their report
+        self.mod_review = {} # Map from user IDs to mod reviews
+        self.submitted_reports = [] # List of submitted reports
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -101,23 +107,76 @@ class ModBot(discord.Client):
                 await message.channel.send(r)
 
         # If the report is complete or cancelled, remove it from our map
-        if self.reports[author_id].report_complete():
+        if self.reports[author_id].report_end():
             report = self.reports.pop(author_id)
 
+            # If the report is complete, save it to list of reports for mod to review
+            if report.report_complete():
+                # TODO: implementsomething more sophisticated that scales better for sorting
+                self.submitted_reports.append(report)
+                self.submitted_reports.sort(reverse=True)
+
+                # Notify the mod channel that a new report has been submitted
+                mod_channel = self.mod_channels[report.message.guild.id]
+                await mod_channel.send(f"Received new report.")
+                
+
             # Also send the message to the mod channel with all details
-            mod_channel = self.mod_channels[report.message.guild.id]
-            await mod_channel.send(f"Generated report: {report.get_report()}")
+            #mod_channel = self.mod_channels[report.message.guild.id]
+            #await mod_channel.send(f"Generated report: {report.get_report()}")
 
     async def handle_channel_message(self, message):
-        # Only handle messages sent in the "group-#" channel
-        if not message.channel.name == f'group-{self.group_num}':
-            return
+        if message.channel.name == f'group-{self.group_num}':
+            # Forward the message to the mod channel
+            mod_channel = self.mod_channels[message.guild.id]
+            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            scores = self.eval_text(message.content)
+            await mod_channel.send(self.code_format(scores))
 
-        # Forward the message to the mod channel
-        mod_channel = self.mod_channels[message.guild.id]
-        await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-        scores = self.eval_text(message.content)
-        await mod_channel.send(self.code_format(scores))
+        elif message.channel.name == f'group-{self.group_num}-mod':
+            # TODO: implement locks to allow multiple mods to review at the same time
+            mod_channel = self.mod_channels[message.guild.id]
+
+            if message.content == ModReview.LIST_REPORTS:
+                reports_msg = ModReview.list_reports(self.submitted_reports)
+                await mod_channel.send(reports_msg)
+
+            elif message.content == ModReview.REVIEW_URGENT_REPORT:
+                # For now, each moderator can only review one report at a time and
+                # there is no customer interaction
+                
+                author_id = message.author.id
+                if author_id not in self.mod_review:
+                    # Take the most urgent report and review it
+                    most_urgent = self.submitted_reports.pop(0)
+                    self.mod_review[author_id] = ModReview(self, most_urgent)
+                    # Start the moderator flow using drop down boxes
+
+                    responses = await self.mod_review[author_id].handle_message(message)
+                    for r in responses:
+                        if len(r) == 2:
+                            msg, view = r
+                            await message.channel.send(msg, view=view)
+                        else:
+                            await message.channel.send(r)
+                else:
+                    await mod_channel.send("A moderator can only review one report at a time.")
+
+            elif message.content == ModReview.REVIEW_DONE:
+
+                author_id = message.author.id
+                if author_id in self.mod_review:
+                    finished_report = self.mod_review.pop(author_id)
+                    await message.channel.send(f"Report {finished_report.get_report_id()} is finished with review")
+                else:
+                    await message.channel.send("You don't have any active reports being reviewed") 
+
+            else:
+                # Check 
+                pass
+                
+        return
+
 
     
     def eval_text(self, message):
