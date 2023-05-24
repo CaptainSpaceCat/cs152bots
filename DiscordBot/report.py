@@ -186,7 +186,7 @@ class Report:
             self.state = State.REPORT_COMPLETE
             if payload == GENERIC_YES:
                 return [(f"User: {self.message.author} has been blocked. Please type 'done' to finish your report.")]
-            elif PAYLOAD == GENERIC_NO:
+            elif payload == GENERIC_NO:
                 return [f"You will continue to see content from {self.message.author}. Please type 'done' to finish your report."]
             
         return []
