@@ -47,9 +47,13 @@ REPORT_DATE = "Date"
 REPORTING_USER = "Reporting User"
 REPORTING_USER_ID = "Reporting User ID"
 REPORTED_USER = "Reported User"
+REPORTED_USER_ID = "Reported User ID"
 REPORTED_POST = "Reported Post"
 REPORTED_POST_URL = "Reported Post URL"
 REPORT_SEVERITY = "Report Severity"
+GUILD_WHERE_REPORTED = "Guild"
+REPORTED_AUTHOR_GUILD_ID = "Reported User Guild ID"
+REPORTED_MESSAGE = "Reported message"
 
 
 class State(Enum):
@@ -125,9 +129,14 @@ class Report:
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
             self.add_to_report(REPORTED_USER, message.author.name)
+            self.add_to_report(REPORTED_USER_ID, message.author)
             self.add_to_report(REPORTED_POST, message.content)
+            self.add_to_report(GUILD_WHERE_REPORTED, message.guild.id)
+            self.add_to_report(REPORTED_AUTHOR_GUILD_ID, message.author.id)
+            self.add_to_report(REPORTED_MESSAGE, message)
 
             self.message = message  # Save the found message so we can reference attributes later
+
 
             select_options = [
                 (MANIPULATED_CONTENT, "Completely false content"),

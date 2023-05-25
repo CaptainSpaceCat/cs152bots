@@ -1,8 +1,15 @@
 from enum import Enum, auto
+import discord
+
+from datetime import timedelta
+delta = timedelta(
+    days=0,
+    seconds=27
+)
 
 from report import ReportView, ReportDropdown
 # TODO: move these to constants.py folder
-from report import GENERIC_YES, GENERIC_NO, REPORTING_USER_ID, REPORTED_POST_URL
+from report import GENERIC_YES, GENERIC_NO, REPORTING_USER_ID, REPORTED_POST_URL, REPORTED_USER_ID, GUILD_WHERE_REPORTED, REPORTED_AUTHOR_GUILD_ID, REPORTED_MESSAGE
 
 
 # System Prompts
@@ -66,7 +73,7 @@ class ModReview:
 
         if prompt == ACCURATE_LINK_PROMPT:
             if payload == GENERIC_NO:
-                # TODO: Implement warn the user
+                # TODO: Implement warn the user -> DONE
                 await self.report.report_info[REPORTING_USER_ID].send(f"""
                 Please try to provide pertinent information while reporting misinformation. 
                 This message is in response to your report {self.report.report_info[REPORTED_POST_URL]}.
@@ -77,7 +84,8 @@ class ModReview:
 
         if prompt == MISINFO_VIOLATION_PROMPT:
             if payload == GENERIC_YES:
-                # TODO: remove the post
+                # TODO: remove the post -> DONE
+                await self.report.report_info[REPORTED_MESSAGE].delete()
                 await self.channel.send(f"*Remove offending post*")
                 return [(IMMEDIATE_DANGER_PROMPT, ReportView(yes_no_select_options, IMMEDIATE_DANGER_PROMPT, self._handle_report_type))]
             elif payload == GENERIC_NO:
@@ -95,6 +103,19 @@ class ModReview:
             if payload == GENERIC_YES:
                 # TODO: report to law enforcement
                 # TODO: ban account
+                # guild = self.client.get_guild(self.report.report_info[GUILD_WHERE_REPORTED])
+                
+                # member = guild.get_member(self.report.report_info[REPORTED_AUTHOR_GUILD_ID])
+                # print(member)
+                # # print(self.report.report_info[REPORTED_USER_ID])
+                # # reason = "Your account was reported >= 3 times for misinformation"
+                # # await self.report.report_info[REPORTED_USER_ID].ban(reason=reason)
+                # # await self.report.report_info[REPORTED_USER_ID].unban(reason=reason)
+                # # await member.edit(timed_out_until = discord.utils.utcnow())
+                # await self.report.report_info[REPORTED_USER_ID].timeout(delta)
+
+                await self.report.report_info[REPORTED_MESSAGE].delete()
+
                 await self.channel.send(f"*Report to law enforcement*")
                 await self.channel.send(f"*Ban account*")
     
@@ -104,9 +125,16 @@ class ModReview:
         if prompt == REPEAT_OFFENDER_PROMPT:
             if payload == GENERIC_YES:
                 # TODO: ban reported account
+                reason = "Your account was reported >= 3 times for misinformation"
+                await self.report.report_info[REPORTED_USER_ID].ban(reason=reason)
+                await self.report.report_info[REPORTED_USER_ID].unban(reason=reason)
                 await self.channel.send(f"*Report to law enforcement*")
             elif payload == GENERIC_NO:
                 # TODO: Warn reported account
+                await self.report.report_info[REPORTED_USER_ID].send(f"""
+                Please don't post misinformation on the platform. Your post {self.report.report_info[REPORTED_POST_URL]}
+                was reported by another user. Three reports will lead to your account being banned.
+                """)
                 await self.channel.send(f"*Warn account*")
             
         self.review_status = ReviewState.REVIEW_COMPLETE
