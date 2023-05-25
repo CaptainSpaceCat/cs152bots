@@ -45,6 +45,7 @@ THANK_YOU_MSG = "Thank you for your report. Our content moderation team will tak
 REPORT_ID = "Report ID"
 REPORT_DATE = "Date"
 REPORTING_USER = "Reporting User"
+REPORTING_USER_ID = "Reporting User ID"
 REPORTED_USER = "Reported User"
 REPORTED_POST = "Reported Post"
 REPORTED_POST_URL = "Reported Post URL"
@@ -100,6 +101,7 @@ class Report:
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
             self.add_to_report(REPORTING_USER, message.author.name)
+            self.add_to_report(REPORTING_USER_ID, message.author)
             return [reply]
         
         if self.state == State.AWAITING_MESSAGE:

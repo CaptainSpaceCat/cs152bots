@@ -2,7 +2,8 @@ from enum import Enum, auto
 
 from report import ReportView, ReportDropdown
 # TODO: move these to constants.py folder
-from report import GENERIC_YES, GENERIC_NO
+from report import GENERIC_YES, GENERIC_NO, REPORTING_USER_ID, REPORTED_POST_URL
+
 
 # System Prompts
 ACCURATE_LINK_PROMPT = "Does the report contain a factual link?"
@@ -66,6 +67,10 @@ class ModReview:
         if prompt == ACCURATE_LINK_PROMPT:
             if payload == GENERIC_NO:
                 # TODO: Implement warn the user
+                await self.report.report_info[REPORTING_USER_ID].send(f"""
+                Please try to provide pertinent information while reporting misinformation. 
+                This message is in response to your report {self.report.report_info[REPORTED_POST_URL]}.
+                """)
                 await self.channel.send(f"*Warn offending user*")
                 
             return [(MISINFO_VIOLATION_PROMPT, ReportView(yes_no_select_options, MISINFO_VIOLATION_PROMPT, self._handle_report_type))]
