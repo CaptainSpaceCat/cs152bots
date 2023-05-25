@@ -36,7 +36,7 @@ COUNTER_EVIDENCE_PROMPT = "Do you have counter evidence from a reputable source?
 IMPOSTER_PROMPT = "Is this impersonating a real person or organization?"
 OUT_OF_CONTEXT_PROMPT = "Do you have the original context?"
 REAL_ORG_PROMPT = "Do you know who the real person or organization being impersonated is?"
-INTENT_TO_DECEIVE_PROMPT = "Do you think this misinformation was posted with intention to deceive?"
+IMMINENT_DANGER_PROMPT = "Does the misinformation cause imminent danger?"
 BLOCK_PROMPT = "Do you want to block the user?"
 SUBMIT_LINK_MSG = "Please submit the URL or relevant context."
 THANK_YOU_MSG = "Thank you for your report. Our content moderation team will take a look at the report and take appropriate action."
@@ -153,7 +153,7 @@ class Report:
                     (GENERIC_NO, "")
                 ]
                 self.reporting_stage = None
-                return [(INTENT_TO_DECEIVE_PROMPT, ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
+                return [(IMMINENT_DANGER_PROMPT, ReportView(yes_no_select_options, IMMINENT_DANGER_PROMPT, self._handle_report_type))]
 
                 # return self._handle_report_type(SUBMIT_LINK_MSG, message.content)
 
@@ -216,12 +216,12 @@ class Report:
                 return [(SUBMIT_LINK_MSG)]
 
             elif payload == GENERIC_NO:
-                return [(INTENT_TO_DECEIVE_PROMPT, ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
+                return [(IMMINENT_DANGER_PROMPT, ReportView(yes_no_select_options, IMMINENT_DANGER_PROMPT, self._handle_report_type))]
 
         # if prompt == SUBMIT_LINK_MSG:
-        #     return [(INTENT_TO_DECEIVE_PROMPT, ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
+        #     return [(IMMINENT_DANGER_PROMPT, ReportView(yes_no_select_options, IMMINENT_DANGER_PROMPT, self._handle_report_type))]
 
-        if prompt == INTENT_TO_DECEIVE_PROMPT:
+        if prompt == IMMINENT_DANGER_PROMPT:
             return [(THANK_YOU_MSG), (BLOCK_PROMPT, ReportView(yes_no_select_options, BLOCK_PROMPT, self._handle_report_type))]
 
     
