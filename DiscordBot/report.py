@@ -51,8 +51,6 @@ REPORTED_USER_ID = "Reported User ID"
 REPORTED_POST = "Reported Post"
 REPORTED_POST_URL = "Reported Post URL"
 REPORT_SEVERITY = "Report Severity"
-GUILD_WHERE_REPORTED = "Guild"
-REPORTED_AUTHOR_GUILD_ID = "Reported User Guild ID"
 REPORTED_MESSAGE = "Reported message"
 EVIDENCE_URL = "URL or context as evidence"
 
@@ -132,8 +130,6 @@ class Report:
             self.add_to_report(REPORTED_USER, message.author.name)
             self.add_to_report(REPORTED_USER_ID, message.author)
             self.add_to_report(REPORTED_POST, message.content)
-            self.add_to_report(GUILD_WHERE_REPORTED, message.guild.id)
-            self.add_to_report(REPORTED_AUTHOR_GUILD_ID, message.author.id)
             self.add_to_report(REPORTED_MESSAGE, message)
 
             self.message = message  # Save the found message so we can reference attributes later

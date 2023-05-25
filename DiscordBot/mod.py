@@ -9,7 +9,7 @@ delta = timedelta(
 
 from report import ReportView, ReportDropdown
 # TODO: move these to constants.py folder
-from report import GENERIC_YES, GENERIC_NO, REPORTING_USER_ID, REPORTED_POST_URL, REPORTED_USER_ID, GUILD_WHERE_REPORTED, REPORTED_AUTHOR_GUILD_ID, REPORTED_MESSAGE
+from report import GENERIC_YES, GENERIC_NO, REPORTING_USER_ID, REPORTED_POST_URL, REPORTED_USER_ID, REPORTED_MESSAGE
 
 
 # System Prompts
@@ -103,16 +103,6 @@ class ModReview:
             if payload == GENERIC_YES:
                 # TODO: report to law enforcement
                 # TODO: ban account
-                # guild = self.client.get_guild(self.report.report_info[GUILD_WHERE_REPORTED])
-                
-                # member = guild.get_member(self.report.report_info[REPORTED_AUTHOR_GUILD_ID])
-                # print(member)
-                # # print(self.report.report_info[REPORTED_USER_ID])
-                # # reason = "Your account was reported >= 3 times for misinformation"
-                # # await self.report.report_info[REPORTED_USER_ID].ban(reason=reason)
-                # # await self.report.report_info[REPORTED_USER_ID].unban(reason=reason)
-                # # await member.edit(timed_out_until = discord.utils.utcnow())
-                # await self.report.report_info[REPORTED_USER_ID].timeout(delta)
 
                 # await self.report.report_info[REPORTED_MESSAGE].delete()
 
