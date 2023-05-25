@@ -54,6 +54,7 @@ REPORT_SEVERITY = "Report Severity"
 GUILD_WHERE_REPORTED = "Guild"
 REPORTED_AUTHOR_GUILD_ID = "Reported User Guild ID"
 REPORTED_MESSAGE = "Reported message"
+EVIDENCE_URL = "URL or context as evidence"
 
 
 class State(Enum):
@@ -150,10 +151,18 @@ class Report:
         if self.state == State.MESSAGE_IDENTIFIED:
             # Check if its awaiting a msg from 
             if self.reporting_stage == SUBMIT_LINK_MSG:
+                self.add_to_report(EVIDENCE_URL, message.content)
+                yes_no_select_options = [
+                    (GENERIC_YES, ""),
+                    (GENERIC_NO, "")
+                ]
                 self.reporting_stage = None
-                return self._handle_report_type(SUBMIT_LINK_MSG, message.content)
+                return [(INTENT_TO_DECEIVE_PROMPT, ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
 
-            return ["Please select a reason from the above list."]
+                # return self._handle_report_type(SUBMIT_LINK_MSG, message.content)
+
+            return [("Please select a reason from the above list." )]
+
 
         return []
 
@@ -213,8 +222,8 @@ class Report:
             elif payload == GENERIC_NO:
                 return [(INTENT_TO_DECEIVE_PROMPT, ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
 
-        if prompt == SUBMIT_LINK_MSG:
-            return [(INTENT_TO_DECEIVE_PROMPT, ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
+        # if prompt == SUBMIT_LINK_MSG:
+        #     return [(INTENT_TO_DECEIVE_PROMPT, ReportView(yes_no_select_options, INTENT_TO_DECEIVE_PROMPT, self._handle_report_type))]
 
         if prompt == INTENT_TO_DECEIVE_PROMPT:
             return [(THANK_YOU_MSG), (BLOCK_PROMPT, ReportView(yes_no_select_options, BLOCK_PROMPT, self._handle_report_type))]
