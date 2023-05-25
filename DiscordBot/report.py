@@ -176,7 +176,7 @@ class Report:
         if prompt == ABUSE_PROMPT:
             if payload == MANIPULATED_CONTENT:
                 # TODO: This is just an arbitrary severity ranking, needs to be updated once we have something better
-                self.report_severity += 4
+                self.report_severity += 2
                 select_options = [
                     (MOD_ORIG_SOURCE, ""),
                     (MISSING_INFO, ""),
@@ -189,7 +189,7 @@ class Report:
                 return [(COUNTER_EVIDENCE_PROMPT, ReportView(yes_no_select_options, COUNTER_EVIDENCE_PROMPT, self._handle_report_type))]
 
             elif payload == IMPOSTER_CONTENT:
-                self.report_severity += 2
+                self.report_severity += 4
                 select_options = [
                     (IMPOSTER, "This post is made by someone pretending to be someone they are not"),
                     (FAKE_PERSON, "This post is made by a user that doesn't actually exist (e.g. bot)")
@@ -222,6 +222,8 @@ class Report:
         #     return [(IMMINENT_DANGER_PROMPT, ReportView(yes_no_select_options, IMMINENT_DANGER_PROMPT, self._handle_report_type))]
 
         if prompt == IMMINENT_DANGER_PROMPT:
+            if payload == GENERIC_YES:
+                self.report_severity += 10
             return [(THANK_YOU_MSG), (BLOCK_PROMPT, ReportView(yes_no_select_options, BLOCK_PROMPT, self._handle_report_type))]
 
     
