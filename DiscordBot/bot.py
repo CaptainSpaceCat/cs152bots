@@ -126,6 +126,7 @@ class ModBot(discord.Client):
             #await mod_channel.send(f"Generated report: {report.get_report()}")
 
     async def handle_channel_message(self, message):
+
         if message.channel.name == f'group-{self.group_num}':
             # Forward the message to the mod channel
             mod_channel = self.mod_channels[message.guild.id]
@@ -167,7 +168,7 @@ class ModBot(discord.Client):
                 author_id = message.author.id
                 if author_id in self.mod_review:
                     finished_report = self.mod_review.pop(author_id)
-                    await message.channel.send(f"Report {finished_report.get_report_id()} is finished with review")
+                    await message.channel.send(f"Report {finished_report.report.get_report_id()} is finished with review")
                 else:
                     await message.channel.send("You don't have any active reports being reviewed") 
 

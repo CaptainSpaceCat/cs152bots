@@ -114,7 +114,7 @@ class ModReview:
                 # # await member.edit(timed_out_until = discord.utils.utcnow())
                 # await self.report.report_info[REPORTED_USER_ID].timeout(delta)
 
-                await self.report.report_info[REPORTED_MESSAGE].delete()
+                # await self.report.report_info[REPORTED_MESSAGE].delete()
 
                 await self.channel.send(f"*Report to law enforcement*")
                 await self.channel.send(f"*Ban account*")
@@ -125,9 +125,9 @@ class ModReview:
         if prompt == REPEAT_OFFENDER_PROMPT:
             if payload == GENERIC_YES:
                 # TODO: ban reported account
-                reason = "Your account was reported >= 3 times for misinformation"
-                await self.report.report_info[REPORTED_USER_ID].ban(reason=reason)
-                await self.report.report_info[REPORTED_USER_ID].unban(reason=reason)
+                # reason = "Your account was reported >= 3 times for misinformation"
+                # await self.report.report_info[REPORTED_USER_ID].ban(reason=reason)
+                # await self.report.report_info[REPORTED_USER_ID].unban(reason=reason)
                 await self.channel.send(f"*Report to law enforcement*")
             elif payload == GENERIC_NO:
                 # TODO: Warn reported account
