@@ -128,4 +128,4 @@ class ModReview:
                 await self.channel.send(f"*Warn account*")
             
         self.review_status = ReviewState.REVIEW_COMPLETE
-        return [(f"Report remediation workflow finished. Type '{self.REVIEW_DONE}' to finish the report.")]
+        return [(f"Report remediation workflow finished. Type {self.REVIEW_DONE} to finish the report.")]
