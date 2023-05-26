@@ -136,8 +136,8 @@ class Report:
 
 
             select_options = [
-                (MANIPULATED_CONTENT, "Completely false content"),
-                (FAKE_CONTENT, "Distortion of information"),
+                (MANIPULATED_CONTENT, "Distortion of information"),
+                (FAKE_CONTENT, "Completely false content"),
                 (IMPOSTER_CONTENT, "Impersonation of genuine source"),
                 (OUT_OF_CONTEXT, "Accurate factual content used in a false context")
             ]

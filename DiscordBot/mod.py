@@ -46,6 +46,8 @@ class ModReview:
         all_reports = ""
         for ind, report in enumerate(reports):
             all_reports += f"(#{ind}) -- **ID**: {report.get_report_id()}, **Sev**: {report.get_report_severity()}, **Date**: {report.get_report_date()}\n"
+        if not all_reports:
+            all_reports = "There are no reports to review at this time!"
         return all_reports
 
 
