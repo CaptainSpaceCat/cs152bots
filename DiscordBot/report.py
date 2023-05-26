@@ -206,6 +206,8 @@ class Report:
             return [(COUNTER_EVIDENCE_PROMPT, ReportView(yes_no_select_options, COUNTER_EVIDENCE_PROMPT, self._handle_report_type))]
 
         if prompt == IMPOSTER_PROMPT:
+            if payload == FAKE_PERSON:
+                return [(IMMINENT_DANGER_PROMPT, ReportView(yes_no_select_options, IMMINENT_DANGER_PROMPT, self._handle_report_type))]
             return [(REAL_ORG_PROMPT, ReportView(yes_no_select_options, REAL_ORG_PROMPT, self._handle_report_type))]
             
 
