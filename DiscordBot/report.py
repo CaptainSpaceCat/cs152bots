@@ -44,9 +44,9 @@ THANK_YOU_MSG = "Thank you for your report. Our content moderation team will tak
 # Report Fields
 REPORT_ID = "Report ID"
 REPORT_DATE = "Date"
-REPORTING_USER = "Reporting User"
+#REPORTING_USER = "Reporting User"
 REPORTING_USER_ID = "Reporting User ID"
-REPORTED_USER = "Reported User"
+#REPORTED_USER = "Reported User"
 REPORTED_USER_ID = "Reported User ID"
 REPORTED_POST = "Reported Post"
 REPORTED_POST_URL = "Reported Post URL"
@@ -103,7 +103,7 @@ class Report:
             reply += "Please copy paste the link to the message you want to report.\n"
             reply += "You can obtain this link by right-clicking the message and clicking `Copy Message Link`."
             self.state = State.AWAITING_MESSAGE
-            self.add_to_report(REPORTING_USER, message.author.name)
+            #self.add_to_report(REPORTING_USER, message.author.name)
             self.add_to_report(REPORTING_USER_ID, message.author)
             return [reply]
         
@@ -127,7 +127,7 @@ class Report:
 
             # Here we've found the message - it's up to you to decide what to do next!
             self.state = State.MESSAGE_IDENTIFIED
-            self.add_to_report(REPORTED_USER, message.author.name)
+            #self.add_to_report(REPORTED_USER, message.author.name)
             self.add_to_report(REPORTED_USER_ID, message.author)
             self.add_to_report(REPORTED_POST, message.content)
             self.add_to_report(REPORTED_MESSAGE, message)
@@ -272,15 +272,15 @@ class Report:
             raise Exception("This can only be called after a report is complete.")
         return self.report_info.get(REPORT_SEVERITY, 0)
 
-    def get_reporting_user(self):
+    def get_reporting_user_id(self):
         if self.state != State.REPORT_COMPLETE:
             raise Exception("This can only be called after a report is complete.")
-        return self.report_info.get(REPORTING_USER, None)
+        return self.report_info.get(REPORTING_USER_ID, None)
 
-    def get_reported_user(self):
+    def get_reported_user_id(self):
         if self.state != State.REPORT_COMPLETE:
             raise Exception("This can only be called after a report is complete.")
-        return self.report_info.get(REPORTED_USER, None)
+        return self.report_info.get(REPORTED_USER_ID, None)
 
     # Order reports based on severity and date
     def __eq__(self, obj):

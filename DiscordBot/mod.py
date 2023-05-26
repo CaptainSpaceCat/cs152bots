@@ -9,7 +9,8 @@ delta = timedelta(
 
 from report import ReportView, ReportDropdown
 # TODO: move these to constants.py folder
-from report import GENERIC_YES, GENERIC_NO, REPORTING_USER_ID, REPORTED_POST_URL, REPORTED_USER_ID, REPORTED_MESSAGE
+from report import (GENERIC_YES, GENERIC_NO, REPORTING_USER_ID, 
+                    REPORTED_POST_URL, REPORTED_USER_ID, REPORTED_MESSAGE)
 
 
 # System Prompts
@@ -44,7 +45,7 @@ class ModReview:
     def list_reports(reports):
         all_reports = ""
         for ind, report in enumerate(reports):
-            all_reports += f"(#{ind}) -- ID: {report.get_report_id()}, Sev: {report.get_report_severity()}, Date: {report.get_report_date()}\n"
+            all_reports += f"(#{ind}) -- **ID**: {report.get_report_id()}, **Sev**: {report.get_report_severity()}, **Date**: {report.get_report_date()}\n"
         return all_reports
 
 
