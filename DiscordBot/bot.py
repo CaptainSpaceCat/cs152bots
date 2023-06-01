@@ -9,6 +9,8 @@ import requests
 import discord
 from discord.ext import commands
 
+from apis.claimbuster import ClaimBuster
+from apis.openaichat import OpenAI
 from report import Report
 from mod import ModReview
 
@@ -40,6 +42,10 @@ class ModBot(discord.Client):
         self.reports = {} # Map from user IDs to the state of their report
         self.mod_review = {} # Map from user IDs to mod reviews
         self.submitted_reports = [] # List of submitted reports
+
+        # Initialize the various apis
+        self.openai = OpenAI()
+        self.claimbuster = ClaimBuster()
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -75,6 +81,7 @@ class ModBot(discord.Client):
             await self.handle_channel_message(message)
         else:
             await self.handle_dm(message)
+
 
     async def handle_dm(self, message):
         # Handle a help message
@@ -130,9 +137,13 @@ class ModBot(discord.Client):
         if message.channel.name == f'group-{self.group_num}':
             # Forward the message to the mod channel
             mod_channel = self.mod_channels[message.guild.id]
-            await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
-            scores = self.eval_text(message.content)
-            await mod_channel.send(self.code_format(scores))
+            #await mod_channel.send(f'Forwarded message:\n{message.author.name}: "{message.content}"')
+            data_payload = self.eval_text(message.content)
+
+            base_msg = f'New post by user `{message.author.name}`\n"{message.content}"\n\n'
+            base_msg += self.code_format(data_payload)
+
+            await mod_channel.send(base_msg)
 
         elif message.channel.name == f'group-{self.group_num}-mod':
             # TODO: implement locks to allow multiple mods to review at the same time
@@ -178,23 +189,41 @@ class ModBot(discord.Client):
                 
         return
 
-
     
     def eval_text(self, message):
-        ''''
-        TODO: Once you know how you want to evaluate messages in your channel, 
-        insert your code here! This will primarily be used in Milestone 3. 
-        '''
-        return message
+        data_payload = {}
+        # Check if its misinformation via OpenAI
+        conclusion, reason = self.openai.misinfo_detection(message)
+        data_payload["llm_result"] = conclusion
+        data_payload["llm_reason"] = reason
+
+        # Check if its misinformation via Google Fact Check API
+        conclusion, similar_msgs = self.claimbuster.get_matching_facts(message)
+        data_payload["crowd_source_result"] = conclusion
+        data_payload["crowd_source_examples"] = similar_msgs
+
+        return data_payload
 
     
-    def code_format(self, text):
+    def code_format(self, payload):
         ''''
         TODO: Once you know how you want to show that a message has been 
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
-        return "Evaluated: '" + text+ "'"
+        print(payload)
+        text = f"**LLM conclusion**: {payload['llm_result']}\n**LLM reason**: {payload['llm_reason']}\n"
+
+        text += f"**Crowd Source Fact Check conclusion**: {payload['crowd_source_result']}\nHere are similar fact-checked statements that support this decision: \n"
+        for example in payload["crowd_source_examples"]:
+            text += f"• {example['formatted_msg']}\n"
+
+        if payload['llm_result'] == payload['crowd_source_result']:
+            text += f"\nThis post is likely {payload['llm_result']} based on agreement between multiple sources."
+        else:
+            text += f"\nIt is unclear whether this post is misinformation, please evaluate as necessary."
+
+        return text
 
 
 client = ModBot()
