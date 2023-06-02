@@ -9,6 +9,7 @@ import requests
 import discord
 from discord.ext import commands
 
+from apis.helper import MISINFO, NOT_MISINFO, UNCLEAR
 from apis.claimbuster import ClaimBuster
 from apis.openaichat import OpenAI
 from report import Report
@@ -196,6 +197,9 @@ class ModBot(discord.Client):
         conclusion, reason = self.openai.misinfo_detection(message)
         data_payload["llm_result"] = conclusion
         data_payload["llm_reason"] = reason
+        if conclusion == MISINFO:
+            misinfo_type = self.openai.get_misinfo_type(message)
+            data_payload["llm_result_type"] = misinfo_type
 
         # Check if its misinformation via Google Fact Check API
         conclusion, similar_msgs = self.claimbuster.get_matching_facts(message)
@@ -211,10 +215,11 @@ class ModBot(discord.Client):
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
-        print(payload)
         text = f"**LLM conclusion**: {payload['llm_result']}\n**LLM reason**: {payload['llm_reason']}\n"
+        if "llm_result_type" in payload:
+            text += f"**LLM Misinformation Type**: {payload['llm_result_type']}\n"
 
-        text += f"**Crowd Source Fact Check conclusion**: {payload['crowd_source_result']}\nHere are similar fact-checked statements that support this decision: \n"
+        text += f"**Crowd Source Fact Check conclusion**: {payload['crowd_source_result']}\nHere are similar fact-checked statements from Google FactCheck API that support this decision: \n"
         for example in payload["crowd_source_examples"]:
             text += f"• {example['formatted_msg']}\n"
 

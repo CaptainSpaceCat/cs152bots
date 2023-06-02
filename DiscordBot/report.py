@@ -7,6 +7,8 @@ import re
 
 import discord
 
+from constants import MANIPULATED_CONTENT, FAKE_CONTENT, IMPOSTER_CONTENT, OUT_OF_CONTEXT
+
 
 # TODO: organize these constants so they have natural substructure
 

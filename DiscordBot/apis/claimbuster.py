@@ -19,11 +19,18 @@ class ClaimBuster:
         self.request_headers = {"x-api-key": config['CLAIMBUSTER_API']}
         self.text_analysis = TextAnalysis()
 
-    def get_matching_facts(self, claim, threshold=0.7):
+    def get_fact_score(self, claim):
+        curr_url = self.KNOWLEDGE_BASE_ENDPOINT.format(claim=claim)
+        api_response = requests.get(url=curr_url, headers=self.request_headers)
+        print(api_response.json())
+        
+
+    def get_matching_facts(self, claim, threshold=0.75):
         curr_url = self.FACT_MATCHER_ENDPOINT.format(claim=claim)
         api_response = requests.get(url=curr_url, headers=self.request_headers)
         classification_result, examples = self._parse_get_matching_facts(api_response.json(), threshold)
         return classification_result, examples
+
 
     def _parse_get_matching_facts(self, payload, threshold):
         # For each similar fact, get the true/false sentiment of the example
@@ -38,16 +45,34 @@ class ClaimBuster:
 
             if curr_emb_sim > threshold:
                 # Generate a positive/negative true/false classifier for the truth rating
-                category = self.text_analysis.get_sentiment(fact['truth_rating'])
+                #category = self.text_analysis.get_sentiment(fact['truth_rating'])
+
+                # First check if the user input and the verified fact entail one another
+                #  - if yes, then result entailment would mean not minsinfo
+                #  - if no, then result entailment would mean misinfo
+                claim_entailment = self.text_analysis.is_entailment(payload['claim'], fact['claim'], input_type='claim')
+
+                result_entailment = self.text_analysis.is_entailment(fact['claim'], fact['truth_rating'], input_type='result')
+
+                if claim_entailment:
+                    category = MISINFO
+                    if result_entailment:
+                        category = NOT_MISINFO
+                else:
+                    category = NOT_MISINFO
+                    if result_entailment:
+                        category = MISINFO
+
                 counts[category] += 1
 
                 supporting_facts.append({
                     "status": category,
+                    "truth_rating": fact['truth_rating'],
                     "claim": fact['claim'],
                     "source": fact['search'],
                     "url": fact['url'],
                     "sim": curr_emb_sim,
-                    "formatted_msg": f"Sim to current post: {curr_emb_sim}, Claim: {fact['claim']}, Conclusion: {category}, URL supporting conlusion: {fact['url']}"
+                    "formatted_msg": f"Sim to current post: {curr_emb_sim}, Conclusion: {category}, URL supporting conlusion: {fact['url']}"
                 })
 
         supporting_facts.sort(key=lambda x: x['sim'], reverse=True)
@@ -55,9 +80,9 @@ class ClaimBuster:
         if len(supporting_facts) == 0:
             return UNCLEAR, [{"formatted_msg": "No similar crowd sourced reporting has verified the validity of this statement"}]
 
-        # If one category has over 50%, then conclude that the class is correct. Otherwise say it is unclear
+        # If one category has over 66%, then conclude that the class is correct. Otherwise say it is unclear
         classification, count = counts.most_common(1)[0]
-        if count < len(supporting_facts) * 0.75:
+        if count < len(supporting_facts) * 0.66:
             classification = UNCLEAR
 
         # Return the consensus if there is a clear majority and the list of similar claims + verifications
@@ -65,6 +90,7 @@ class ClaimBuster:
 
 
 #cb = ClaimBuster()
-#class_result, examples = cb.get_matching_facts("vaccines cause autism")
+#cb.get_fact_score("the president is biden")
+#class_result, examples = cb.get_matching_facts("covid is a hoax")
 #print(class_result)
 #print(examples)
