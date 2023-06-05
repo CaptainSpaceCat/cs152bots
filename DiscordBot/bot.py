@@ -11,6 +11,7 @@ from discord.ext import commands
 
 from apis.helper import MISINFO, NOT_MISINFO, UNCLEAR
 from apis.claimbuster import ClaimBuster
+from apis.googlefactcheck import GoogleFactCheck
 from apis.openaichat import OpenAI
 from report import Report
 from mod import ModReview
@@ -47,6 +48,7 @@ class ModBot(discord.Client):
         # Initialize the various apis
         self.openai = OpenAI()
         self.claimbuster = ClaimBuster()
+        self.googlefactcheck = GoogleFactCheck()
 
     async def on_ready(self):
         print(f'{self.user.name} has connected to Discord! It is these guilds:')
@@ -142,9 +144,14 @@ class ModBot(discord.Client):
             data_payload = self.eval_text(message.content)
 
             base_msg = f'New post by user `{message.author.name}`\n"{message.content}"\n\n'
-            base_msg += self.code_format(data_payload)
+            aux_msgs = self.code_format(data_payload)
 
             await mod_channel.send(base_msg)
+            for msg in aux_msgs:
+                if msg == "-DELETE-":
+                    await message.delete()
+                    continue
+                await mod_channel.send(msg)
 
         elif message.channel.name == f'group-{self.group_num}-mod':
             # TODO: implement locks to allow multiple mods to review at the same time
@@ -202,7 +209,8 @@ class ModBot(discord.Client):
             data_payload["llm_result_type"] = misinfo_type
 
         # Check if its misinformation via Google Fact Check API
-        conclusion, similar_msgs = self.claimbuster.get_matching_facts(message)
+        #conclusion, similar_msgs = self.claimbuster.get_matching_facts(message)
+        conclusion, similar_msgs = self.googlefactcheck.get_matching_facts(message)
         data_payload["crowd_source_result"] = conclusion
         data_payload["crowd_source_examples"] = similar_msgs
 
@@ -215,6 +223,8 @@ class ModBot(discord.Client):
         evaluated, insert your code here for formatting the string to be 
         shown in the mod channel. 
         '''
+        all_text = []
+
         text = f"**LLM conclusion**: {payload['llm_result']}\n**LLM reason**: {payload['llm_reason']}\n"
         if "llm_result_type" in payload:
             text += f"**LLM Misinformation Type**: {payload['llm_result_type']}\n"
@@ -223,12 +233,17 @@ class ModBot(discord.Client):
         for example in payload["crowd_source_examples"]:
             text += f"• {example['formatted_msg']}\n"
 
-        if payload['llm_result'] == payload['crowd_source_result']:
-            text += f"\nThis post is likely {payload['llm_result']} based on agreement between multiple sources."
-        else:
-            text += f"\nIt is unclear whether this post is misinformation, please evaluate as necessary."
+        all_text.append(text)
 
-        return text
+        aux_info = ""
+        if payload['llm_result'] == payload['crowd_source_result']:
+            all_text.append(f"\nThis post is likely {payload['llm_result']} based on agreement between multiple sources.")
+            all_text.append("-DELETE-")
+            all_text.append(f"*Remove offending post*")
+        else:
+            all_text.append(f"\nIt is unclear whether this post is misinformation, please evaluate as necessary.")
+
+        return all_text
 
 
 client = ModBot()
