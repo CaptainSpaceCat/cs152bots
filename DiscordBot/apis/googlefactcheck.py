@@ -28,53 +28,53 @@ class GoogleFactCheck:
         orig_claim_emb = self.text_analysis.embed(orig_claim)
         counts = Counter(MISINFO=0, NOT_MISINFO=0, UNCLEAR=0)
         supporting_facts = []
+        if 'claims' in payload:
+            for claim in payload['claims']:
 
-        for claim in payload['claims']:
+                # For now, just pick one review as a counterfactual
+                if 'claimReview' not in claim or len(claim['claimReview']) == 0:
+                    continue
 
-            # For now, just pick one review as a counterfactual
-            if 'claimReview' not in claim or len(claim['claimReview']) == 0:
-                continue
+                fact_check_site = claim['claimReview'][0]['publisher']['site']
+                counter_url = claim['claimReview'][0]['url']
+                truth_rating = claim['claimReview'][0]['textualRating']
 
-            fact_check_site = claim['claimReview'][0]['publisher']['site']
-            counter_url = claim['claimReview'][0]['url']
-            truth_rating = claim['claimReview'][0]['textualRating']
+                claim_text = claim['text']
+                curr_emb = self.text_analysis.embed(claim_text)
+                curr_emb_sim = self.text_analysis.embed_sim(orig_claim_emb, curr_emb)
 
-            claim_text = claim['text']
-            curr_emb = self.text_analysis.embed(claim_text)
-            curr_emb_sim = self.text_analysis.embed_sim(orig_claim_emb, curr_emb)
+                # Only add as supporting evidence if it passes a given threshold
+                if curr_emb_sim > threshold:
+                    # Generate a positive/negative true/false classifier for the truth rating
+                    #category = self.text_analysis.get_sentiment(fact['truth_rating'])
 
-            # Only add as supporting evidence if it passes a given threshold
-            if curr_emb_sim > threshold:
-                # Generate a positive/negative true/false classifier for the truth rating
-                #category = self.text_analysis.get_sentiment(fact['truth_rating'])
+                    # First check if the user input and the verified fact entail one another
+                    #  - if yes, then result entailment would mean not minsinfo
+                    #  - if no, then result entailment would mean misinfo
+                    claim_entailment = self.text_analysis.is_entailment(orig_claim, claim_text, input_type='claim')
 
-                # First check if the user input and the verified fact entail one another
-                #  - if yes, then result entailment would mean not minsinfo
-                #  - if no, then result entailment would mean misinfo
-                claim_entailment = self.text_analysis.is_entailment(orig_claim, claim_text, input_type='claim')
+                    result_entailment = self.text_analysis.is_entailment(claim_text, truth_rating, input_type='result')
 
-                result_entailment = self.text_analysis.is_entailment(claim_text, truth_rating, input_type='result')
-
-                if claim_entailment:
-                    category = MISINFO
-                    if result_entailment:
-                        category = NOT_MISINFO
-                else:
-                    category = NOT_MISINFO
-                    if result_entailment:
+                    if claim_entailment:
                         category = MISINFO
+                        if result_entailment:
+                            category = NOT_MISINFO
+                    else:
+                        category = NOT_MISINFO
+                        if result_entailment:
+                            category = MISINFO
 
-                counts[category] += 1
+                    counts[category] += 1
 
-                supporting_facts.append({
-                    "status": category,
-                    "truth_rating": truth_rating,
-                    "claim": claim_text,
-                    "source": fact_check_site,
-                    "url": counter_url,
-                    "sim": curr_emb_sim,
-                    "formatted_msg": f"Sim to current post: {curr_emb_sim}, Conclusion: {category}, URL supporting conlusion: {counter_url}, Site that Fact Checked: {fact_check_site}"
-                })
+                    supporting_facts.append({
+                        "status": category,
+                        "truth_rating": truth_rating,
+                        "claim": claim_text,
+                        "source": fact_check_site,
+                        "url": counter_url,
+                        "sim": curr_emb_sim,
+                        "formatted_msg": f"Sim to current post: {curr_emb_sim}, Conclusion: {category}, URL supporting conlusion: {counter_url}, Site that Fact Checked: {fact_check_site}"
+                    })
 
         supporting_facts.sort(key=lambda x: x['sim'], reverse=True)
     

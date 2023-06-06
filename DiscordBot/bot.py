@@ -238,8 +238,9 @@ class ModBot(discord.Client):
         aux_info = ""
         if payload['llm_result'] == payload['crowd_source_result']:
             all_text.append(f"\nThis post is likely {payload['llm_result']} based on agreement between multiple sources.")
-            all_text.append("-DELETE-")
-            all_text.append(f"*Remove offending post*")
+            if payload['llm_result'] == MISINFO:
+                all_text.append("-DELETE-")
+                all_text.append(f"*Remove offending post*")
         else:
             all_text.append(f"\nIt is unclear whether this post is misinformation, please evaluate as necessary.")
 
